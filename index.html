@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SnapRecipe AI - Visual Recipe Challenge</title>
+  <title>SnapRiddle AI - Visual Riddle Generator</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js" crossorigin="anonymous"></script>
+  <!-- Canvas Confetti Library for Victory Celebration -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -21,12 +23,14 @@
           colors: {
             darkbg: '#050914',
             darkcard: '#0a1020',
+            darkinput: '#060c1a',
             cyanaccent: '#00f2fe',
             blueaccent: '#00a3ff',
           },
           boxShadow: {
             'cyan-glow': '0 0 20px rgba(0, 242, 254, 0.4)',
             'cyan-btn': '0 0 15px rgba(0, 242, 254, 0.5)',
+            'card-border': '0 0 1px 1px rgba(0, 242, 254, 0.2)',
           }
         }
       }
@@ -55,9 +59,14 @@
     .cyan-pill-btn {
       background: #00f2fe;
       color: #050914;
-      font-weight: 800;
+      font-weight: 700;
       border-radius: 9999px;
       transition: all 0.2s ease;
+    }
+    .cyan-pill-btn:hover {
+      background: #38bdf8;
+      box-shadow: 0 0 20px rgba(0, 242, 254, 0.7);
+      transform: translateY(-1px);
     }
 
     .cyan-rect-btn {
@@ -86,69 +95,162 @@
 
 <body class="h-full bg-[#050914] text-slate-100 font-sans relative overflow-x-hidden flex flex-col selection:bg-cyanaccent selection:text-darkbg">
 
+  <canvas id="particleCanvas" class="fixed inset-0 pointer-events-none z-0"></canvas>
+
   <div class="relative z-10 flex flex-col min-h-screen">
     
-    <!-- Header Bar -->
+    <!-- Top Bar -->
     <header class="border-b border-cyanaccent/20 bg-[#050914]/90 backdrop-blur-md sticky top-0 z-40">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <div class="flex items-center space-x-3 cursor-pointer" onclick="nextDish()">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="returnToStartScreen()">
           <div class="w-9 h-9 rounded-xl bg-cyanaccent text-darkbg flex items-center justify-center font-bold text-lg shadow-cyan-btn">
-            <i class="fa-solid fa-utensils"></i>
+            <i class="fa-solid fa-puzzle-piece"></i>
           </div>
           <span class="font-extrabold text-xl tracking-tight text-white font-mono">
-            SNAPRECIPE <span class="text-cyanaccent text-xs px-2 py-0.5 rounded-full bg-cyanaccent/10 border border-cyanaccent/30">AI</span>
+            SNAPRIDDLE <span class="text-cyanaccent text-xs px-2 py-0.5 rounded-full bg-cyanaccent/10 border border-cyanaccent/30">AI</span>
           </span>
         </div>
 
         <div class="flex items-center space-x-4">
           <div class="flex items-center space-x-3 bg-darkcard px-4 py-2 rounded-xl border border-cyanaccent/20 text-xs font-mono">
-            <span class="text-slate-400"><i class="fa-solid fa-fire text-amber-400 mr-1"></i>Streak:</span>
-            <span id="streakCounter" class="text-cyanaccent font-bold">2</span>
+            <span class="text-slate-400">Streak:</span>
+            <span id="streakCounter" class="text-cyanaccent font-bold">0</span>
             <span class="text-slate-600">|</span>
-            <span class="text-slate-400"><i class="fa-solid fa-trophy text-amber-400 mr-1"></i>Score:</span>
-            <span id="scoreCounter" class="text-blueaccent font-bold">300</span>
+            <span class="text-slate-400">Score:</span>
+            <span id="scoreCounter" class="text-blueaccent font-bold">0</span>
           </div>
 
-          <button onclick="nextDish()" class="px-3.5 py-2 rounded-xl bg-darkcard hover:bg-slate-900 text-slate-300 hover:text-white border border-cyanaccent/30 text-xs font-bold transition-all flex items-center space-x-2">
-            <i class="fa-solid fa-rotate-right"></i>
-            <span>New Dish</span>
+          <button id="btnReturnHome" onclick="returnToStartScreen()" class="hidden px-3.5 py-2 rounded-xl bg-darkcard hover:bg-slate-900 text-slate-300 hover:text-white border border-cyanaccent/30 text-xs font-bold transition-all flex items-center space-x-2">
+            <i class="fa-solid fa-house"></i>
+            <span>Main Menu</span>
           </button>
         </div>
       </div>
     </header>
 
-    <!-- Main Workspace -->
-    <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-center">
+    <!-- START CHOICE SCREEN -->
+    <main id="startScreenView" class="flex-grow max-w-5xl w-full mx-auto px-4 py-12 flex flex-col justify-center items-center">
+      <div class="text-center space-y-4 max-w-2xl mb-12">
+        <div class="inline-flex items-center space-x-2 px-4 py-1 rounded-full bg-cyanaccent/10 border border-cyanaccent/30 text-cyanaccent text-xs font-mono font-bold tracking-wider uppercase">
+          <i class="fa-solid fa-sparkles"></i>
+          <span>Visual Mystery Challenge</span>
+        </div>
+        <h2 class="text-4xl sm:text-5xl font-extrabold text-white tracking-tight">
+          Select Your Riddle Source
+        </h2>
+        <p class="text-slate-400 text-sm">
+          Upload a photo, play a random item, or enter a theme prompt like "Fruits" or "Vehicles" to start guessing!
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full">
+        <!-- Card 1: Upload -->
+        <div onclick="triggerFileUpload()" class="snap-panel p-6 rounded-2xl border border-cyanaccent/20 hover:border-cyanaccent hover:shadow-cyan-glow transition-all cursor-pointer group flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 rounded-xl bg-cyanaccent/10 border border-cyanaccent/30 text-cyanaccent flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-camera"></i>
+            </div>
+            <div>
+              <div class="text-[10px] font-mono text-cyanaccent font-bold uppercase tracking-widest mb-1">MODE 01</div>
+              <h3 class="text-lg font-bold text-white group-hover:text-cyanaccent transition-colors">Upload / Snap Photo</h3>
+              <p class="text-xs text-slate-400 mt-2 leading-relaxed">Choose an image from your device to turn into a visual mystery.</p>
+            </div>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center text-xs font-bold text-cyanaccent space-x-2">
+            <span>Select File</span>
+            <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+          </div>
+          <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+        </div>
+
+        <!-- Card 2: Random -->
+        <div onclick="startRandomChallenge()" class="snap-panel p-6 rounded-2xl border border-cyanaccent/20 hover:border-cyanaccent hover:shadow-cyan-glow transition-all cursor-pointer group flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 rounded-xl bg-cyanaccent/10 border border-cyanaccent/30 text-cyanaccent flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-dice"></i>
+            </div>
+            <div>
+              <div class="text-[10px] font-mono text-cyanaccent font-bold uppercase tracking-widest mb-1">MODE 02</div>
+              <h3 class="text-lg font-bold text-white group-hover:text-cyanaccent transition-colors">Choose Random Item</h3>
+              <p class="text-xs text-slate-400 mt-2 leading-relaxed">Instantly load a curated riddle object from our mystery bank.</p>
+            </div>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center text-xs font-bold text-cyanaccent space-x-2">
+            <span>Play Random</span>
+            <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+          </div>
+        </div>
+
+        <!-- Card 3: Theme Prompt -->
+        <div onclick="openPromptModal()" class="snap-panel p-6 rounded-2xl border border-cyanaccent/20 hover:border-cyanaccent hover:shadow-cyan-glow transition-all cursor-pointer group flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="w-12 h-12 rounded-xl bg-cyanaccent/10 border border-cyanaccent/30 text-cyanaccent flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <div>
+              <div class="text-[10px] font-mono text-cyanaccent font-bold uppercase tracking-widest mb-1">MODE 03</div>
+              <h3 class="text-lg font-bold text-white group-hover:text-cyanaccent transition-colors">Prompt AI Theme</h3>
+              <p class="text-xs text-slate-400 mt-2 leading-relaxed">Type a category (e.g., "Fruits", "Vehicles") to pick a specific item in that category.</p>
+            </div>
+          </div>
+          <div class="mt-6 pt-4 border-t border-slate-800 flex items-center text-xs font-bold text-cyanaccent space-x-2">
+            <span>Enter Theme</span>
+            <i class="fa-solid fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- MAIN GAME VIEW MATCHING REFERENCE IMAGE -->
+    <main id="gameScreenView" class="hidden flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col justify-center">
       <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
 
-        <!-- LEFT COLUMN: Image & Revealed Pill -->
+        <!-- LEFT COLUMN: Secret Image Display + Give Up Button -->
         <div class="lg:col-span-5 flex flex-col justify-between space-y-4">
-          <div class="snap-panel p-4 rounded-2xl flex flex-col items-center justify-center relative flex-grow min-h-[420px] border border-cyanaccent/20">
+          
+          <!-- Image Box -->
+          <div class="snap-panel p-4 rounded-2xl flex flex-col items-center justify-center relative flex-grow min-h-[400px] border border-cyanaccent/20">
             <div class="relative w-full aspect-square rounded-xl overflow-hidden bg-darkbg border border-cyanaccent/20 flex items-center justify-center">
               
-              <!-- Dish Image -->
-              <img id="secretImage" src="https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80" alt="Food Dish" class="w-full h-full object-cover transition-all duration-700 select-none">
+              <!-- Image Element -->
+              <img id="secretImage" src="" alt="Secret Object" class="w-full h-full object-cover transition-all duration-700 blur-[36px] scale-105 select-none pointer-events-none">
 
-              <!-- Revealed Banner -->
-              <div id="revealedBanner" class="absolute top-4 left-4 right-4 z-20 cyan-pill-btn py-3 px-6 text-center font-extrabold text-xs font-mono tracking-wider shadow-cyan-glow uppercase flex items-center justify-center gap-2">
+              <!-- Secret Concealed Overlay -->
+              <div id="blurOverlay" class="absolute inset-0 bg-[#050914]/80 backdrop-blur-[24px] flex flex-col items-center justify-center transition-all duration-700 p-6 text-center z-10">
+                <div class="w-16 h-16 rounded-full bg-darkcard border border-cyanaccent/40 flex items-center justify-center mb-4 text-cyanaccent shadow-cyan-glow">
+                  <i class="fa-solid fa-user-secret text-2xl"></i>
+                </div>
+                <div class="px-4 py-1.5 rounded-full bg-cyanaccent/10 border border-cyanaccent/40 text-cyanaccent font-mono text-xs font-bold tracking-widest uppercase">
+                  <i class="fa-solid fa-lock text-[10px] mr-1.5"></i> SECRET OBJECT CONCEALED
+                </div>
+              </div>
+
+              <!-- EXACT MATCH BANNER FROM IMAGE: Cyan Pill Top Overlay -->
+              <div id="revealedBanner" class="hidden absolute top-4 left-4 right-4 z-20 cyan-pill-btn py-3 px-6 text-center font-extrabold text-sm font-mono tracking-wider shadow-cyan-glow uppercase flex items-center justify-center gap-2">
                 <i class="fa-solid fa-circle-check"></i>
-                <span>REVEALED: <span id="revealedItemName">PIZZA</span></span>
+                <span>REVEALED: <span id="revealedItemName">OBJECT</span></span>
               </div>
 
             </div>
           </div>
+
+          <!-- Give Up Action -->
+          <button id="btnGiveUp" onclick="giveUpAndReveal()" class="w-full py-3.5 px-4 rounded-xl snap-panel hover:bg-rose-950/30 hover:border-rose-500/50 text-rose-300 font-bold text-sm transition-all duration-200 flex items-center justify-center space-x-2 border border-rose-500/30">
+            <i class="fa-solid fa-flag"></i>
+            <span>Give Up & Reveal Solution</span>
+          </button>
         </div>
 
-        <!-- RIGHT COLUMN: Recipe Challenge, Guess Input, Recipe Reveal, Cooking Steps -->
+        <!-- RIGHT COLUMN: Riddle Card, Guess Input, Feedback Banner, Hints -->
         <div class="lg:col-span-7 flex flex-col space-y-5 justify-between">
           
-          <!-- 1. Challenge Card -->
+          <!-- 1. SNAPRIDDLE CHALLENGE CARD -->
           <div class="challenge-card p-6 sm:p-8 flex flex-col justify-between space-y-6">
             <div class="flex items-center justify-between border-b border-cyanaccent/15 pb-4">
               <div class="flex items-center space-x-2.5">
                 <i class="fa-solid fa-puzzle-piece text-cyanaccent text-lg"></i>
                 <h3 class="font-extrabold tracking-widest uppercase text-xs text-cyanaccent font-mono">
-                  SNAPRECIPE CHALLENGE
+                  SNAPRIDDLE CHALLENGE
                 </h3>
               </div>
               <div class="text-xs font-mono text-cyanaccent bg-darkbg/90 px-3 py-1 rounded-full border border-cyanaccent/30">
@@ -156,15 +258,15 @@
               </div>
             </div>
 
-            <!-- Recipe Description Prompt -->
+            <!-- Riddle Quote Text -->
             <div class="py-1">
               <p id="riddleQuoteText" class="text-xl sm:text-2xl font-bold text-white leading-relaxed tracking-tight">
-                "Forged with artisan dough, rich marinara, and melted mozzarella, I am baked in a wood-fired oven. What dish am I?"
+                "Forged in the domain of fruits, I embody rich mysteries and distinct craftsmanship. What object am I?"
               </p>
             </div>
           </div>
 
-          <!-- 2. Guess Input Bar -->
+          <!-- 2. GUESS INPUT BAR -->
           <div class="snap-input-box p-2 flex items-center space-x-3">
             <div class="pl-3 text-cyanaccent text-lg">
               <i class="fa-solid fa-magnifying-glass"></i>
@@ -172,7 +274,7 @@
             <input 
               type="text" 
               id="guessInput" 
-              placeholder="What food or recipe is in the image?" 
+              placeholder="What is in the image?" 
               autocomplete="off"
               onkeydown="if(event.key === 'Enter') submitGuess()"
               class="w-full bg-transparent text-white placeholder-slate-500 text-sm font-medium focus:outline-none py-2"
@@ -186,41 +288,31 @@
             </button>
           </div>
 
-          <!-- 3. Feedback Banner -->
-          <div id="guessFeedback" class="text-sm font-semibold px-5 py-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 flex items-center space-x-2.5">
-            <i class="fa-solid fa-circle-check text-emerald-400"></i>
-            <span>CORRECT! It's a <span id="feedbackDishName">Pizza</span>! Generated full recipe below:</span>
-          </div>
+          <!-- 3. SUCCESS / FEEDBACK BANNER (Matches screenshot style) -->
+          <div id="guessFeedback" class="hidden text-sm font-semibold px-5 py-3.5 rounded-xl transition-all flex items-center space-x-2.5"></div>
 
-          <!-- 4. Generated Recipe & Steps Box -->
+          <!-- 4. REVEALED HINTS CARD -->
           <div class="snap-panel p-6 rounded-2xl flex flex-col space-y-4">
             <div class="flex items-center justify-between border-b border-cyanaccent/15 pb-3">
               <div class="flex items-center space-x-2">
                 <i class="fa-solid fa-lightbulb text-amber-400"></i>
-                <h4 class="font-bold text-xs tracking-wider text-slate-200 uppercase font-mono">RECIPE PREPARATION STEPS</h4>
+                <h4 class="font-bold text-xs tracking-wider text-slate-200 uppercase font-mono">REVEALED HINTS</h4>
               </div>
-              <span id="hintUnlockTracker" class="text-xs font-mono text-slate-400">4 of 4 steps unlocked</span>
+              <span id="hintUnlockTracker" class="text-xs font-mono text-slate-400">0 of 5 unlocked</span>
             </div>
 
-            <!-- Steps List -->
-            <div id="stepsContainer" class="space-y-2.5">
-              <div class="flex items-start space-x-3 bg-darkcard/80 p-3 rounded-xl border border-cyanaccent/20">
-                <span class="w-6 h-6 rounded-full bg-cyanaccent/20 border border-cyanaccent/40 text-cyanaccent flex items-center justify-center font-bold text-xs flex-shrink-0">1</span>
-                <p class="text-xs text-slate-200">Prepare and stretch pizza dough into a 12-inch circle on parchment paper.</p>
-              </div>
-              <div class="flex items-start space-x-3 bg-darkcard/80 p-3 rounded-xl border border-cyanaccent/20">
-                <span class="w-6 h-6 rounded-full bg-cyanaccent/20 border border-cyanaccent/40 text-cyanaccent flex items-center justify-center font-bold text-xs flex-shrink-0">2</span>
-                <p class="text-xs text-slate-200">Spread rich San Marzano tomato sauce and fresh mozzarella slices evenly.</p>
-              </div>
-              <div class="flex items-start space-x-3 bg-darkcard/80 p-3 rounded-xl border border-cyanaccent/20">
-                <span class="w-6 h-6 rounded-full bg-cyanaccent/20 border border-cyanaccent/40 text-cyanaccent flex items-center justify-center font-bold text-xs flex-shrink-0">3</span>
-                <p class="text-xs text-slate-200">Bake at 500°F (260°C) for 10-12 minutes until crust is crispy and cheese bubbles.</p>
-              </div>
-              <div class="flex items-start space-x-3 bg-darkcard/80 p-3 rounded-xl border border-cyanaccent/20">
-                <span class="w-6 h-6 rounded-full bg-cyanaccent/20 border border-cyanaccent/40 text-cyanaccent flex items-center justify-center font-bold text-xs flex-shrink-0">4</span>
-                <p class="text-xs text-slate-200">Garnish with fresh basil leaves and a drizzle of extra virgin olive oil.</p>
-              </div>
+            <!-- Hints List -->
+            <div id="hintsContainer" class="space-y-2.5">
+              <p id="hintsEmptyState" class="text-xs text-slate-500 italic">
+                Incorrect guesses unlock progressive AI hints here...
+              </p>
+              <div id="unlockedHintsList" class="space-y-2"></div>
             </div>
+
+            <button id="btnUnlockManualHint" onclick="unlockNextHint()" class="mt-2 w-full py-2.5 px-4 rounded-xl bg-cyanaccent/10 hover:bg-cyanaccent/20 border border-cyanaccent/30 text-cyanaccent text-xs font-mono font-bold transition-all flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-key"></i>
+              <span>Unlock Next Hint Early</span>
+            </button>
           </div>
 
         </div>
@@ -228,91 +320,611 @@
       </div>
     </main>
 
+    <!-- VICTORY CELEBRATION MODAL -->
+    <div id="victoryModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-darkbg/90 backdrop-blur-md">
+      <div class="snap-panel max-w-lg w-full p-8 border-2 border-cyanaccent shadow-cyan-glow text-center space-y-6 relative">
+        <div class="w-16 h-16 mx-auto rounded-full bg-cyanaccent text-darkbg flex items-center justify-center shadow-cyan-btn text-2xl font-bold">
+          <i class="fa-solid fa-trophy"></i>
+        </div>
+
+        <div class="space-y-2">
+          <span class="px-3 py-1 rounded-full bg-cyanaccent/10 text-cyanaccent border border-cyanaccent/30 text-xs font-mono font-bold uppercase">RIDDLE SOLVED!</span>
+          <h3 class="text-3xl font-extrabold text-white">Congratulations!</h3>
+          <p class="text-xs text-slate-300 font-mono">You correctly identified the secret object!</p>
+        </div>
+
+        <div class="relative w-40 h-40 mx-auto rounded-xl overflow-hidden border-2 border-cyanaccent shadow-lg bg-darkbg">
+          <img id="victoryImagePreview" src="" alt="Answer" class="w-full h-full object-cover">
+        </div>
+
+        <div class="bg-darkbg p-4 rounded-xl border border-cyanaccent/30 space-y-1">
+          <div class="text-[10px] text-slate-400 font-mono uppercase">SECRET OBJECT</div>
+          <div id="victoryObjectName" class="text-xl font-extrabold text-cyanaccent uppercase tracking-wider">APPLE</div>
+          <div class="text-xs text-emerald-400 font-mono font-bold pt-1">+100 SCORE POINTS</div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+          <button onclick="closeVictoryModal(); returnToStartScreen();" class="w-full py-3 rounded-xl bg-darkcard hover:bg-slate-900 text-slate-300 border border-cyanaccent/30 text-xs font-bold transition-all">
+            Main Menu
+          </button>
+          <button onclick="closeVictoryModal(); startRandomChallenge();" class="w-full py-3 rounded-xl cyan-rect-btn font-extrabold text-xs shadow-cyan-btn transition-all">
+            Next Riddle <i class="fa-solid fa-arrow-right ml-1"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROMPT THEME MODAL -->
+    <div id="promptModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-darkbg/80 backdrop-blur-md">
+      <div class="snap-panel p-6 max-w-md w-full border border-cyanaccent/40 shadow-cyan-glow">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-wand-magic-sparkles text-cyanaccent"></i>
+            Theme Prompt Generator
+          </h3>
+          <button onclick="closePromptModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <p class="text-xs text-slate-300 mb-4 leading-relaxed">
+          Type a category (e.g., <span class="text-cyanaccent font-mono">Fruits</span>, <span class="text-cyanaccent font-mono">Vehicles</span>, <span class="text-cyanaccent font-mono">Space</span>, <span class="text-cyanaccent font-mono">Instruments</span>). We will select a specific concrete item in that category for you to guess!
+        </p>
+        
+        <input 
+          type="text" 
+          id="themePromptInput" 
+          placeholder="e.g. Fruits, Vehicles, Animals..." 
+          onkeydown="if(event.key==='Enter') submitPromptTheme()"
+          class="w-full px-4 py-3 rounded-xl snap-input-box text-white text-sm mb-4 focus:outline-none"
+        >
+
+        <div class="flex justify-end space-x-3">
+          <button onclick="closePromptModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white">Cancel</button>
+          <button onclick="submitPromptTheme()" class="cyan-rect-btn px-5 py-2 text-xs font-bold">Generate Riddle</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOADING OVERLAY -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-darkbg/90 backdrop-blur-md">
+      <div class="w-16 h-16 rounded-full border-4 border-cyanaccent/20 border-t-cyanaccent animate-spin mb-4"></div>
+      <h3 id="loadingTitle" class="text-base font-bold text-white font-mono">Selecting Secret Item...</h3>
+      <p id="loadingSub" class="text-xs text-cyanaccent mt-1 font-mono">Writing custom riddle...</p>
+    </div>
+
     <footer class="snap-panel rounded-none border-x-0 border-b-0 border-t border-cyanaccent/20 py-4 mt-auto text-center text-xs text-slate-500 font-mono">
-      SnapRecipe AI &copy; 2026
+      SnapRiddle AI &copy; 2026
     </footer>
 
   </div>
 
+  <canvas id="offscreenCanvas" width="600" height="600" class="hidden"></canvas>
+
   <script>
-    const DISHES = [
+    // PREDEFINED RANDOM ITEMS
+    const PREDEFINED_RIDDLES = [
+      {
+        name: "Apple",
+        category: "fruits",
+        image: "https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=800&q=80",
+        riddle: "I wear a glossy coat of orchard red, with a crisp white core inside. A famous drop from my tree once inspired Isaac Newton's law of gravity. What object am I?",
+        hints: [
+          "Grows on trees in temperate orchards.",
+          "Commonly eaten fresh or baked into sweet autumn pies.",
+          "Has a tiny woody stem at its top crown.",
+          "The namesake symbol of a world-famous tech corporation.",
+          "Starts with the letter 'A'."
+        ]
+      },
       {
         name: "Pizza",
+        category: "food",
         image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80",
-        prompt: "Forged with artisan dough, rich marinara, and melted mozzarella, I am baked in a wood-fired oven. What dish am I?",
-        steps: [
-          "Prepare and stretch pizza dough into a 12-inch circle on parchment paper.",
-          "Spread rich San Marzano tomato sauce and fresh mozzarella slices evenly.",
-          "Bake at 500°F (260°C) for 10-12 minutes until crust is crispy and cheese bubbles.",
-          "Garnish with fresh basil leaves and a drizzle of extra virgin olive oil."
+        riddle: "I am a circle made of dough, sliced into triangles as I go. Topped with a savory, colorful crown, I am the favorite feast in every town.",
+        hints: [
+          "Baked in a searing hot wood-fired oven.",
+          "Melted mozzarella cheese stretches when you pull a slice.",
+          "Comes delivered in a flat square cardboard box.",
+          "Classic toppings include pepperoni and marinara sauce.",
+          "Starts with the letter 'P'."
         ]
       },
       {
-        name: "Burger",
-        image: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80",
-        prompt: "Layered with a juicy grilled patty, melted cheddar cheese, lettuce, and tomato inside a toasted brioche bun. What dish am I?",
-        steps: [
-          "Season ground beef patty and sear on high heat for 3-4 minutes per side.",
-          "Top patty with cheddar cheese during last minute of cooking to melt.",
-          "Toast brioche bun halves lightly in butter.",
-          "Assemble burger with sauce, lettuce, tomato, patty, and serve warm."
-        ]
-      },
-      {
-        name: "Pasta",
-        image: "https://images.unsplash.com/photo-1621996346565-e3def6164286?auto=format&fit=crop&w=800&q=80",
-        prompt: "Tossed in a pan with rich garlic parmesan cream sauce and garnished with fresh parsley. What dish am I?",
-        steps: [
-          "Boil fettuccine noodles in salted water until al dente.",
-          "Melt butter and sauté minced garlic for 1 minute.",
-          "Stir in heavy cream and fresh grated parmesan cheese until smooth.",
-          "Toss cooked pasta into sauce and garnish with parsley."
+        name: "Camera",
+        category: "technology",
+        image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=800&q=80",
+        riddle: "I freeze fleeting seconds of time in light and shadows, shuttering open and shut in a fraction of a heartbeat. What object am I?",
+        hints: [
+          "Features a glass optical lens and tactile metal shutter controls.",
+          "Preserves memories onto digital sensors or film rolls.",
+          "Photographers carry me around their neck.",
+          "Makes a distinct 'click-snap' sound when taking a photo.",
+          "Starts with the letter 'C'."
         ]
       }
     ];
 
-    let currentIndex = 0;
-    let score = 300;
-    let streak = 2;
+    // THEME PROMPT DICTIONARY - CONCRETE SPECIFIC ITEMS PER CATEGORY
+    const THEME_DICTIONARY = {
+      fruits: [
+        {
+          name: "Apple",
+          color: "#dc2626",
+          accentColor: "#f87171",
+          riddle: "Forged in the domain of fruits, I sport a glossy red jacket with a crisp sweet center. A falling branch drop once inspired Newton's gravity theory. What object am I?",
+          hints: [
+            "Strongly connected to orchards and autumn harvesting.",
+            "Features a crisp bite and a central core of seeds.",
+            "Commonly baked into warm cinnamon pies.",
+            "Famous tech brand named after this object.",
+            "Starts with the letter 'A'."
+          ]
+        },
+        {
+          name: "Banana",
+          color: "#eab308",
+          accentColor: "#fef08a",
+          riddle: "Forged in tropical bowers, I grow in hanging golden clusters. Peel back my soft yellow skin to enjoy a crescent sweet curve. What object am I?",
+          hints: [
+            "Grows in tropical hanging bunches.",
+            "Rich in potassium and favorite snack of primates.",
+            "Has a distinct yellow curved crescent shape.",
+            "You peel the skin off before eating.",
+            "Starts with the letter 'B'."
+          ]
+        },
+        {
+          name: "Strawberry",
+          color: "#ef4444",
+          accentColor: "#22c55e",
+          riddle: "Forged in summer gardens, I am a heart-shaped ruby berry wearing a tiny leafy green collar and studded with external seeds. What object am I?",
+          hints: [
+            "Bright red heart-shaped berry.",
+            "Has tiny yellow seeds on its outer skin.",
+            "Topped with a small leafy green stem cap.",
+            "Popular in shortcakes, jams, and milkshakes.",
+            "Starts with the letter 'S'."
+          ]
+        },
+        {
+          name: "Pineapple",
+          color: "#d97706",
+          accentColor: "#16a34a",
+          riddle: "Forged in tropical sunshine, I wear a prickly golden diamond-patterned armor and sport a spiky green crown on top. What object am I?",
+          hints: [
+            "Tropical fruit with a spiky leafy crown on top.",
+            "Has tough textured golden outer skin.",
+            "Famous ingredient on Hawaiian pizza.",
+            "Sweet and tangy yellow flesh inside.",
+            "Starts with the letter 'P'."
+          ]
+        }
+      ],
+      vehicles: [
+        {
+          name: "Sports Car",
+          color: "#2563eb",
+          accentColor: "#38bdf8",
+          riddle: "Forged for speed on asphalt roads, I roar with turbocharged horsepower on four sleek alloy wheels. What object am I?",
+          hints: [
+            "Engineered for high performance and swift acceleration.",
+            "Has an aerodynamic low chassis and dual exhausts.",
+            "Runs on highway roads and raceways.",
+            "Features bucket seats and a leather steering wheel.",
+            "Starts with the letter 'S'."
+          ]
+        },
+        {
+          name: "Helicopter",
+          color: "#f59e0b",
+          accentColor: "#64748b",
+          riddle: "Forged for vertical flight, giant spinning main rotors chop through the air above my cockpit, letting me hover in place. What object am I?",
+          hints: [
+            "Uses spinning overhead rotor blades to lift off.",
+            "Can hover motionless mid-air and land on pads.",
+            "Has a tail rotor for steering stability.",
+            "Used for search and rescue operations.",
+            "Starts with the letter 'H'."
+          ]
+        }
+      ],
+      animals: [
+        {
+          name: "Lion",
+          color: "#d97706",
+          accentColor: "#78350f",
+          riddle: "Forged in the savanna, my mighty roar echoes across the grasslands as I wear a majestic golden mane. What object am I?",
+          hints: [
+            "Known as the King of the Jungle.",
+            "Apex predator living in prides.",
+            "Males feature large fluffy manes.",
+            "Big wild feline native to Africa.",
+            "Starts with the letter 'L'."
+          ]
+        }
+      ]
+    };
 
+    // GAME STATE
+    let currentItem = null;
+    let attemptCount = 1;
+    let unlockedHints = [];
+    let streak = 0;
+    let score = 0;
+    let isSolved = false;
+
+    // PARTICLE CANVAS
+    function initParticleCanvas() {
+      const canvas = document.getElementById('particleCanvas');
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width = window.innerWidth;
+      let h = canvas.height = window.innerHeight;
+
+      window.addEventListener('resize', () => {
+        w = canvas.width = window.innerWidth;
+        h = canvas.height = window.innerHeight;
+      });
+
+      const particles = [];
+      for (let i = 0; i < 40; i++) {
+        particles.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          r: Math.random() * 2 + 0.5,
+          color: Math.random() > 0.5 ? 'rgba(0, 242, 254, ' : 'rgba(0, 163, 255, ',
+          alpha: Math.random() * 0.3 + 0.1,
+          vx: (Math.random() - 0.5) * 0.25,
+          vy: (Math.random() - 0.5) * 0.25
+        });
+      }
+
+      function render() {
+        ctx.clearRect(0, 0, w, h);
+        particles.forEach(p => {
+          p.x += p.vx;
+          p.y += p.vy;
+          if (p.x < 0) p.x = w;
+          if (p.x > w) p.x = 0;
+          if (p.y < 0) p.y = h;
+          if (p.y > h) p.y = 0;
+
+          ctx.beginPath();
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fillStyle = p.color + p.alpha + ')';
+          ctx.fill();
+        });
+        requestAnimationFrame(render);
+      }
+      render();
+    }
+
+    window.onload = function() {
+      initParticleCanvas();
+    };
+
+    function showLoading(title, sub) {
+      document.getElementById('loadingTitle').innerText = title || "Selecting Item...";
+      document.getElementById('loadingSub').innerText = sub || "Writing riddle...";
+      document.getElementById('loadingOverlay').classList.remove('hidden');
+    }
+
+    function hideLoading() {
+      document.getElementById('loadingOverlay').classList.add('hidden');
+    }
+
+    // GAME ACTIVATION
+    function activateGameView(itemObj) {
+      currentItem = itemObj;
+      attemptCount = 1;
+      unlockedHints = [];
+      isSolved = false;
+
+      document.getElementById('btnReturnHome').classList.remove('hidden');
+
+      const img = document.getElementById('secretImage');
+      img.src = itemObj.image;
+      img.className = "w-full h-full object-cover transition-all duration-700 blur-[36px] scale-105 select-none pointer-events-none";
+
+      const blurOverlay = document.getElementById('blurOverlay');
+      blurOverlay.style.opacity = '1';
+      blurOverlay.style.pointerEvents = 'auto';
+
+      document.getElementById('revealedBanner').classList.add('hidden');
+
+      document.getElementById('attemptCount').innerText = attemptCount;
+      document.getElementById('riddleQuoteText').innerText = `"${itemObj.riddle}"`;
+      document.getElementById('guessInput').value = '';
+      document.getElementById('guessInput').disabled = false;
+      document.getElementById('btnGuess').disabled = false;
+
+      const feedback = document.getElementById('guessFeedback');
+      feedback.className = "hidden text-sm font-semibold px-5 py-3.5 rounded-xl transition-all flex items-center space-x-2.5";
+
+      renderHintsUI();
+
+      document.getElementById('startScreenView').classList.add('hidden');
+      document.getElementById('gameScreenView').classList.remove('hidden');
+    }
+
+    function returnToStartScreen() {
+      document.getElementById('gameScreenView').classList.add('hidden');
+      document.getElementById('startScreenView').classList.remove('hidden');
+      document.getElementById('btnReturnHome').classList.add('hidden');
+    }
+
+    // MODE 01: UPLOAD
+    function triggerFileUpload() {
+      document.getElementById('fileInput').click();
+    }
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        showLoading("Analyzing Photo...", "Creating custom photo riddle...");
+        setTimeout(() => {
+          activateGameView({
+            name: "Uploaded Item",
+            image: evt.target.result,
+            riddle: "Captured from real-life vision, I possess distinct silhouettes and textures. Examine the hints and guess what object am I?",
+            hints: [
+              "Examine the main central contours through the mystery shroud.",
+              "Consider common everyday tools or items.",
+              "Look closely at color distributions in the frame.",
+              "Think about shapes and proportions.",
+              "Focus on key features of the item."
+            ]
+          });
+          hideLoading();
+        }, 700);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // MODE 02: RANDOM
+    function startRandomChallenge() {
+      showLoading("Selecting Random Riddle...", "Preparing challenge...");
+      setTimeout(() => {
+        const randomIndex = Math.floor(Math.random() * PREDEFINED_RIDDLES.length);
+        activateGameView(PREDEFINED_RIDDLES[randomIndex]);
+        hideLoading();
+      }, 500);
+    }
+
+    // MODE 03: THEME PROMPT (SELECTS SPECIFIC OBJECT IN CATEGORY)
+    function openPromptModal() {
+      document.getElementById('promptModal').classList.remove('hidden');
+    }
+
+    function closePromptModal() {
+      document.getElementById('promptModal').classList.add('hidden');
+    }
+
+    function generateProceduralArtwork(obj) {
+      const canvas = document.getElementById('offscreenCanvas');
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      const grad = ctx.createRadialGradient(w/2, h/2, 40, w/2, h/2, w);
+      grad.addColorStop(0, '#0a1020');
+      grad.addColorStop(1, '#050914');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw vector art representation
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(w/2, h/2, 170, 0, Math.PI * 2);
+      ctx.fillStyle = obj.color;
+      ctx.globalAlpha = 0.85;
+      ctx.shadowBlur = 35;
+      ctx.shadowColor = obj.color;
+      ctx.fill();
+      ctx.restore();
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(w/2 + 35, h/2 - 25, 90, 0, Math.PI * 2);
+      ctx.fillStyle = obj.accentColor;
+      ctx.globalAlpha = 0.9;
+      ctx.shadowBlur = 25;
+      ctx.shadowColor = obj.accentColor;
+      ctx.fill();
+      ctx.restore();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 44px 'Plus Jakarta Sans', sans-serif";
+      ctx.textAlign = "center";
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = "#00f2fe";
+      ctx.fillText(obj.name.toUpperCase(), w/2, h/2 + 15);
+
+      return canvas.toDataURL();
+    }
+
+    function submitPromptTheme() {
+      const input = document.getElementById('themePromptInput').value.trim().toLowerCase();
+      if (!input) return;
+
+      closePromptModal();
+      showLoading(`Searching "${input}" Category...`, "Selecting specific object...");
+
+      setTimeout(() => {
+        let matchedCatKey = Object.keys(THEME_DICTIONARY).find(k => input.includes(k) || k.includes(input));
+        let selectedObj;
+
+        if (matchedCatKey && THEME_DICTIONARY[matchedCatKey].length > 0) {
+          const list = THEME_DICTIONARY[matchedCatKey];
+          selectedObj = list[Math.floor(Math.random() * list.length)];
+        } else {
+          // Dynamic specific fallback
+          const objectName = input.charAt(0).toUpperCase() + input.slice(1);
+          selectedObj = {
+            name: objectName,
+            color: "#00a3ff",
+            accentColor: "#00f2fe",
+            riddle: `Forged in the domain of ${input}, I embody rich mysteries and distinct craftsmanship. What object am I?`,
+            hints: [
+              `Strongly connected to the concept of ${input}.`,
+              "Features distinctive elemental textures and colors.",
+              "Focus on the primary focal shape in the center.",
+              "Think of specific key objects in this theme.",
+              `Starts with the letter '${objectName.charAt(0)}'.`
+            ]
+          };
+        }
+
+        const artwork = generateProceduralArtwork(selectedObj);
+
+        activateGameView({
+          name: selectedObj.name,
+          image: artwork,
+          riddle: selectedObj.riddle,
+          hints: selectedObj.hints
+        });
+
+        hideLoading();
+      }, 800);
+    }
+
+    // GUESS EVALUATION
     function submitGuess() {
-      const val = document.getElementById('guessInput').value.trim().toLowerCase();
-      const current = DISHES[currentIndex];
+      if (isSolved || !currentItem) return;
 
-      if (val === current.name.toLowerCase()) {
+      const input = document.getElementById('guessInput');
+      const userGuess = input.value.trim().toLowerCase();
+      if (!userGuess) return;
+
+      const targetName = currentItem.name.toLowerCase();
+      
+      // Match condition: exact match or containment
+      const isCorrect = userGuess === targetName || 
+                        (targetName.includes(userGuess) && userGuess.length >= 3) || 
+                        (userGuess.includes(targetName) && targetName.length >= 3);
+
+      const feedback = document.getElementById('guessFeedback');
+      feedback.classList.remove('hidden');
+
+      if (isCorrect) {
+        // MATCH SCREENSHOT GREEN BANNER
+        isSolved = true;
+        streak++;
         score += 100;
-        streak += 1;
-        document.getElementById('scoreCounter').innerText = score;
         document.getElementById('streakCounter').innerText = streak;
-        document.getElementById('guessFeedback').className = "text-sm font-semibold px-5 py-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 flex items-center space-x-2.5";
-        document.getElementById('guessFeedback').innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i><span>CORRECT! It's a <b>${current.name}</b>! Recipe steps generated below:</span>`;
+        document.getElementById('scoreCounter').innerText = score;
+
+        feedback.className = "text-sm font-bold px-5 py-3.5 rounded-xl bg-emerald-950/80 text-emerald-400 border border-emerald-500/50 flex items-center space-x-2.5";
+        feedback.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>CORRECT! It's a ${currentItem.name}!</span>`;
+
+        revealSolution();
+        openVictoryModal();
       } else {
-        document.getElementById('guessFeedback').className = "text-sm font-semibold px-5 py-3.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 flex items-center space-x-2.5";
-        document.getElementById('guessFeedback').innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-400"></i><span>Not quite! Try guessing <b>${current.name}</b>!</span>`;
+        attemptCount++;
+        document.getElementById('attemptCount').innerText = attemptCount;
+
+        feedback.className = "text-sm font-bold px-5 py-3.5 rounded-xl bg-rose-950/80 text-rose-300 border border-rose-500/50 flex items-center space-x-2.5";
+        feedback.innerHTML = `<i class="fa-solid fa-circle-xmark text-rose-400"></i> <span>Incorrect guess. Try again or check hints!</span>`;
+
+        if (unlockedHints.length < 5) {
+          unlockNextHint();
+        }
+      }
+
+      input.value = '';
+    }
+
+    function unlockNextHint() {
+      if (!currentItem || unlockedHints.length >= 5) return;
+
+      const nextIndex = unlockedHints.length;
+      if (currentItem.hints && currentItem.hints[nextIndex]) {
+        unlockedHints.push(currentItem.hints[nextIndex]);
+      } else {
+        unlockedHints.push("Examine the core outline near the center.");
+      }
+
+      const img = document.getElementById('secretImage');
+      const blurAmount = Math.max(0, 36 - (unlockedHints.length * 7));
+      img.style.filter = `blur(${blurAmount}px)`;
+
+      renderHintsUI();
+    }
+
+    function renderHintsUI() {
+      document.getElementById('hintUnlockTracker').innerText = `${unlockedHints.length} of 5 unlocked`;
+
+      const emptyState = document.getElementById('hintsEmptyState');
+      const hintsList = document.getElementById('unlockedHintsList');
+
+      if (unlockedHints.length === 0) {
+        emptyState.classList.remove('hidden');
+        hintsList.innerHTML = '';
+      } else {
+        emptyState.classList.add('hidden');
+        // Render numbered circular pills matching image
+        hintsList.innerHTML = unlockedHints.map((hint, idx) => `
+          <div class="p-3.5 rounded-xl bg-darkbg/90 border border-cyanaccent/20 flex items-center space-x-3 text-xs text-slate-200">
+            <div class="w-6 h-6 rounded-full bg-cyanaccent/20 text-cyanaccent font-mono font-bold flex items-center justify-center flex-shrink-0 text-[11px] border border-cyanaccent/40">
+              ${idx + 1}
+            </div>
+            <p class="leading-relaxed font-medium">${hint}</p>
+          </div>
+        `).join('');
       }
     }
 
-    function nextDish() {
-      currentIndex = (currentIndex + 1) % DISHES.length;
-      const current = DISHES[currentIndex];
+    function giveUpAndReveal() {
+      if (!currentItem) return;
+      isSolved = true;
+      streak = 0;
+      document.getElementById('streakCounter').innerText = streak;
 
-      document.getElementById('secretImage').src = current.image;
-      document.getElementById('revealedItemName').innerText = current.name.toUpperCase();
-      document.getElementById('feedbackDishName').innerText = current.name;
-      document.getElementById('riddleQuoteText').innerText = `"${current.prompt}"`;
-      document.getElementById('guessInput').value = '';
+      const feedback = document.getElementById('guessFeedback');
+      feedback.classList.remove('hidden');
+      feedback.className = "text-sm font-bold px-5 py-3.5 rounded-xl bg-amber-950/80 text-amber-300 border border-amber-500/50 flex items-center space-x-2.5";
+      feedback.innerHTML = `<i class="fa-solid fa-flag text-amber-400"></i> <span>Conceded! The secret object was <strong>${currentItem.name}</strong>.</span>`;
 
-      const container = document.getElementById('stepsContainer');
-      container.innerHTML = '';
-      current.steps.forEach((step, idx) => {
-        const item = document.createElement('div');
-        item.className = "flex items-start space-x-3 bg-darkcard/80 p-3 rounded-xl border border-cyanaccent/20";
-        item.innerHTML = `
-          <span class="w-6 h-6 rounded-full bg-cyanaccent/20 border border-cyanaccent/40 text-cyanaccent flex items-center justify-center font-bold text-xs flex-shrink-0">${idx + 1}</span>
-          <p class="text-xs text-slate-200">${step}</p>
-        `;
-        container.appendChild(item);
-      });
+      revealSolution();
+    }
+
+    function revealSolution() {
+      const img = document.getElementById('secretImage');
+      img.className = "w-full h-full object-cover transition-all duration-1000 blur-0 scale-100";
+
+      const overlay = document.getElementById('blurOverlay');
+      overlay.style.opacity = '0';
+      overlay.style.pointerEvents = 'none';
+
+      const banner = document.getElementById('revealedBanner');
+      banner.classList.remove('hidden');
+      document.getElementById('revealedItemName').innerText = currentItem.name;
+
+      while (unlockedHints.length < 5) {
+        unlockNextHint();
+      }
+
+      document.getElementById('guessInput').disabled = true;
+      document.getElementById('btnGuess').disabled = true;
+    }
+
+    function openVictoryModal() {
+      document.getElementById('victoryImagePreview').src = currentItem.image;
+      document.getElementById('victoryObjectName').innerText = currentItem.name;
+      document.getElementById('victoryModal').classList.remove('hidden');
+
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#00f2fe', '#00a3ff', '#38bdf8']
+        });
+      }
+    }
+
+    function closeVictoryModal() {
+      document.getElementById('victoryModal').classList.add('hidden');
     }
   </script>
 </body>
